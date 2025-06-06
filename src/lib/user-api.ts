@@ -15,9 +15,12 @@ import {
 // Get API URL from environment
 const getApiUrl = (): string => {
   if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+    return (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
+      /\/api$/,
+      ""
+    );
   } else {
-    return "http://localhost:8000/api";
+    return "http://localhost:8000";
   }
 };
 
