@@ -12,9 +12,7 @@ import type {
   PurchaseReceiptAnalyticsResponse,
 } from "@/types/purchasing";
 
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/api$/, "");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Helper hook to ensure token is stored on client side
 export const useAuthToken = () => {
@@ -60,7 +58,7 @@ export function usePurchaseReceipts(filters: PurchaseReceiptFilters = {}) {
       });
 
       const response = await fetch(
-        `${API_BASE}/api/purchase-receipts?${params.toString()}`,
+        `${API_BASE}/purchase-receipts?${params.toString()}`,
         {
           headers: await getAuthHeaders(),
         }
@@ -81,7 +79,7 @@ export function usePurchaseReceipt(id: number) {
   return useQuery({
     queryKey: ["purchase-receipt", id],
     queryFn: async (): Promise<PurchaseReceiptResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-receipts/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-receipts/${id}`, {
         headers: await getAuthHeaders(),
       });
 
@@ -102,7 +100,7 @@ export function useReceivableItems(purchaseOrderId: number) {
     queryKey: ["receivable-items", purchaseOrderId],
     queryFn: async (): Promise<ReceivableItemsResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/${purchaseOrderId}/receivable-items`,
+        `${API_BASE}/purchase-orders/${purchaseOrderId}/receivable-items`,
         {
           headers: await getAuthHeaders(),
         }
@@ -124,12 +122,9 @@ export function usePurchaseReceiptAnalytics() {
   return useQuery({
     queryKey: ["purchase-receipt-analytics"],
     queryFn: async (): Promise<PurchaseReceiptAnalyticsResponse> => {
-      const response = await fetch(
-        `${API_BASE}/api/purchase-receipts/analytics`,
-        {
-          headers: await getAuthHeaders(),
-        }
-      );
+      const response = await fetch(`${API_BASE}/purchase-receipts/analytics`, {
+        headers: await getAuthHeaders(),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch purchase receipt analytics");
@@ -148,7 +143,7 @@ export function useCreatePurchaseReceipt() {
     mutationFn: async (
       data: CreatePurchaseReceiptData
     ): Promise<PurchaseReceiptResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-receipts`, {
+      const response = await fetch(`${API_BASE}/purchase-receipts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -183,7 +178,7 @@ export function useUpdatePurchaseReceipt() {
       id: number;
       data: UpdatePurchaseReceiptData;
     }): Promise<PurchaseReceiptResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-receipts/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-receipts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -213,7 +208,7 @@ export function useDeletePurchaseReceipt() {
 
   return useMutation({
     mutationFn: async (id: number): Promise<void> => {
-      const response = await fetch(`${API_BASE}/api/purchase-receipts/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-receipts/${id}`, {
         method: "DELETE",
         headers: await getAuthHeaders(),
       });
@@ -237,7 +232,7 @@ export function useApprovePurchaseReceipt() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseReceiptResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-receipts/${id}/approve`,
+        `${API_BASE}/purchase-receipts/${id}/approve`,
         {
           method: "POST",
           headers: {
@@ -270,7 +265,7 @@ export function useRejectPurchaseReceipt() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseReceiptResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-receipts/${id}/reject`,
+        `${API_BASE}/purchase-receipts/${id}/reject`,
         {
           method: "POST",
           headers: {

@@ -30,7 +30,7 @@ export interface Product {
   description?: string;
   sku: string;
   barcode?: string;
-  category_id: number;
+  category_id?: number;
   unit_id: number;
   cost_price: number;
   selling_price: number;
@@ -39,7 +39,7 @@ export interface Product {
   tax_rate: number;
   image?: string;
   status: "active" | "inactive";
-  category: Category;
+  category?: Category;
   unit: Unit;
   stock: ProductStock;
   created_at: string;
@@ -106,7 +106,7 @@ export interface CreateProductData {
   description?: string;
   sku: string;
   barcode?: string;
-  category_id: number;
+  category_id?: number;
   unit_id: number;
   cost_price: number;
   selling_price: number;

@@ -41,7 +41,7 @@ const productSchema = z.object({
     description: z.string().optional(),
     sku: z.string().min(1, "SKU is required").max(100),
     barcode: z.string().optional(),
-    category_id: z.string().min(1, "Category is required"),
+    category_id: z.string().optional().refine(val => val !== "", "Invalid category selection"),
     unit_id: z.string().min(1, "Unit is required"),
     cost_price: z.string().min(1, "Cost price is required"),
     selling_price: z.string().min(1, "Selling price is required"),
@@ -89,18 +89,18 @@ export default function EditProductPage() {
         if (productData?.data) {
             const product = productData.data;
             form.reset({
-                name: product.name,
+                name: product.name || "",
                 description: product.description || "",
-                sku: product.sku,
+                sku: product.sku || "",
                 barcode: product.barcode || "",
-                category_id: product.category_id.toString(),
-                unit_id: product.unit_id.toString(),
-                cost_price: product.cost_price.toString(),
-                selling_price: product.selling_price.toString(),
-                min_stock_level: product.min_stock_level.toString(),
+                category_id: product.category_id?.toString() || "none",
+                unit_id: product.unit_id?.toString() || "",
+                cost_price: product.cost_price?.toString() || "",
+                selling_price: product.selling_price?.toString() || "",
+                min_stock_level: product.min_stock_level?.toString() || "",
                 max_stock_level: product.max_stock_level?.toString() || "",
-                tax_rate: product.tax_rate.toString(),
-                status: product.status,
+                tax_rate: product.tax_rate?.toString() || "0",
+                status: product.status || "active",
             });
 
             if (product.image) {
@@ -125,7 +125,7 @@ export default function EditProductPage() {
         try {
             const formData = {
                 ...data,
-                category_id: parseInt(data.category_id),
+                category_id: data.category_id && data.category_id !== "none" ? parseInt(data.category_id) : undefined,
                 unit_id: parseInt(data.unit_id),
                 cost_price: parseFloat(data.cost_price),
                 selling_price: parseFloat(data.selling_price),
@@ -303,7 +303,7 @@ export default function EditProductPage() {
                                             name="category_id"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Category *</FormLabel>
+                                                    <FormLabel>Category</FormLabel>
                                                     <FormControl>
                                                         <Select
                                                             value={field.value}
@@ -311,9 +311,12 @@ export default function EditProductPage() {
                                                             disabled={categoriesLoading}
                                                         >
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Select category" />
+                                                                <SelectValue placeholder="Select category (optional)" />
                                                             </SelectTrigger>
                                                             <SelectContent>
+                                                                <SelectItem value="none">
+                                                                    No Category
+                                                                </SelectItem>
                                                                 {categoriesData?.data?.map((category) => (
                                                                     <SelectItem
                                                                         key={category.id}

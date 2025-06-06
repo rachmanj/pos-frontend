@@ -14,9 +14,7 @@ import type {
   SupplierFilters,
 } from "@/types/purchasing";
 
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/api$/, "");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Helper hook to ensure token is stored on client side
 export const useAuthToken = () => {
@@ -64,7 +62,7 @@ export function useSuppliers(filters: SupplierFilters = {}) {
       });
 
       const response = await fetch(
-        `${API_BASE}/api/suppliers?${params.toString()}`,
+        `${API_BASE}/suppliers?${params.toString()}`,
         {
           headers: await getAuthHeaders(),
         }
@@ -85,7 +83,7 @@ export function useSupplier(id: number) {
   return useQuery({
     queryKey: ["supplier", id],
     queryFn: async (): Promise<SupplierResponse> => {
-      const response = await fetch(`${API_BASE}/api/suppliers/${id}`, {
+      const response = await fetch(`${API_BASE}/suppliers/${id}`, {
         headers: await getAuthHeaders(),
       });
 
@@ -105,7 +103,7 @@ export function useActiveSuppliers() {
   return useQuery({
     queryKey: ["suppliers", "active"],
     queryFn: async (): Promise<ActiveSuppliersResponse> => {
-      const response = await fetch(`${API_BASE}/api/suppliers/active`, {
+      const response = await fetch(`${API_BASE}/suppliers/active`, {
         headers: await getAuthHeaders(),
       });
 
@@ -124,12 +122,9 @@ export function useSupplierPerformance(id: number) {
   return useQuery({
     queryKey: ["supplier", id, "performance"],
     queryFn: async (): Promise<SupplierPerformanceResponse> => {
-      const response = await fetch(
-        `${API_BASE}/api/suppliers/${id}/performance`,
-        {
-          headers: await getAuthHeaders(),
-        }
-      );
+      const response = await fetch(`${API_BASE}/suppliers/${id}/performance`, {
+        headers: await getAuthHeaders(),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch supplier performance");
@@ -147,7 +142,7 @@ export function useCreateSupplier() {
 
   return useMutation({
     mutationFn: async (data: CreateSupplierData): Promise<SupplierResponse> => {
-      const response = await fetch(`${API_BASE}/api/suppliers`, {
+      const response = await fetch(`${API_BASE}/suppliers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -181,7 +176,7 @@ export function useUpdateSupplier() {
       id: number;
       data: UpdateSupplierData;
     }): Promise<SupplierResponse> => {
-      const response = await fetch(`${API_BASE}/api/suppliers/${id}`, {
+      const response = await fetch(`${API_BASE}/suppliers/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -210,7 +205,7 @@ export function useDeleteSupplier() {
 
   return useMutation({
     mutationFn: async (id: number): Promise<void> => {
-      const response = await fetch(`${API_BASE}/api/suppliers/${id}`, {
+      const response = await fetch(`${API_BASE}/suppliers/${id}`, {
         method: "DELETE",
         headers: await getAuthHeaders(),
       });

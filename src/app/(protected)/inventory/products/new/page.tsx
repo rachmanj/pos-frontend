@@ -40,7 +40,7 @@ const productSchema = z.object({
     description: z.string().optional(),
     sku: z.string().min(1, "SKU is required").max(100),
     barcode: z.string().optional(),
-    category_id: z.string().min(1, "Category is required"),
+    category_id: z.string().optional().refine(val => val !== "", "Invalid category selection"),
     unit_id: z.string().min(1, "Unit is required"),
     cost_price: z.string().min(1, "Cost price is required"),
     selling_price: z.string().min(1, "Selling price is required"),
@@ -65,7 +65,7 @@ export default function NewProductPage() {
             description: "",
             sku: "",
             barcode: "",
-            category_id: "",
+            category_id: "none",
             unit_id: "",
             cost_price: "",
             selling_price: "",
@@ -97,7 +97,7 @@ export default function NewProductPage() {
         try {
             const formData = {
                 ...data,
-                category_id: parseInt(data.category_id),
+                category_id: data.category_id && data.category_id !== "none" ? parseInt(data.category_id) : undefined,
                 unit_id: parseInt(data.unit_id),
                 cost_price: parseFloat(data.cost_price),
                 selling_price: parseFloat(data.selling_price),
@@ -256,7 +256,7 @@ export default function NewProductPage() {
                                             name="category_id"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Category *</FormLabel>
+                                                    <FormLabel>Category</FormLabel>
                                                     <FormControl>
                                                         <Select
                                                             value={field.value}
@@ -264,9 +264,12 @@ export default function NewProductPage() {
                                                             disabled={categoriesLoading}
                                                         >
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Select category" />
+                                                                <SelectValue placeholder="Select category (optional)" />
                                                             </SelectTrigger>
                                                             <SelectContent>
+                                                                <SelectItem value="none">
+                                                                    No Category
+                                                                </SelectItem>
                                                                 {categoriesData?.data?.map((category) => (
                                                                     <SelectItem
                                                                         key={category.id}

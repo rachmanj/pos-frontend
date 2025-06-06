@@ -14,9 +14,7 @@ export interface AuthResponse {
   token: string;
 }
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/api$/, "");
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 const authOptions = {
   providers: [
@@ -71,7 +69,7 @@ const authOptions = {
             name: data.user.name,
             email: data.user.email,
             roles: data.user.roles,
-            permissions: data.user.permissions,
+            permissions: data.user.permissions || [],
             accessToken: data.token,
           };
         } catch (error) {

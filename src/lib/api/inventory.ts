@@ -36,9 +36,8 @@ import {
   UnitConversion,
 } from "@/types/inventory";
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/api$/, "");
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Create axios instance with interceptors
 const api = axios.create({

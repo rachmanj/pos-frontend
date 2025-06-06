@@ -13,9 +13,7 @@ import type {
   PurchaseOrderFilters,
 } from "@/types/purchasing";
 
-const API_BASE = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-).replace(/\/api$/, "");
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 // Helper hook to ensure token is stored on client side
 export const useAuthToken = () => {
@@ -63,7 +61,7 @@ export function usePurchaseOrders(filters: PurchaseOrderFilters = {}) {
       });
 
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders?${params.toString()}`,
+        `${API_BASE}/purchase-orders?${params.toString()}`,
         {
           headers: await getAuthHeaders(),
         }
@@ -84,7 +82,7 @@ export function usePurchaseOrder(id: number) {
   return useQuery({
     queryKey: ["purchase-order", id],
     queryFn: async (): Promise<PurchaseOrderResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-orders/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-orders/${id}`, {
         headers: await getAuthHeaders(),
       });
 
@@ -105,7 +103,7 @@ export function usePurchaseOrderAnalytics() {
     queryKey: ["purchase-orders", "analytics"],
     queryFn: async (): Promise<PurchaseOrderAnalyticsResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/analytics`,
+        `${API_BASE}/purchase-orders/analytics`,
         {
           headers: await getAuthHeaders(),
         }
@@ -128,7 +126,7 @@ export function useCreatePurchaseOrder() {
     mutationFn: async (
       data: CreatePurchaseOrderData
     ): Promise<PurchaseOrderResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-orders`, {
+      const response = await fetch(`${API_BASE}/purchase-orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -162,7 +160,7 @@ export function useUpdatePurchaseOrder() {
       id: number;
       data: UpdatePurchaseOrderData;
     }): Promise<PurchaseOrderResponse> => {
-      const response = await fetch(`${API_BASE}/api/purchase-orders/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-orders/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -191,7 +189,7 @@ export function useDeletePurchaseOrder() {
 
   return useMutation({
     mutationFn: async (id: number): Promise<void> => {
-      const response = await fetch(`${API_BASE}/api/purchase-orders/${id}`, {
+      const response = await fetch(`${API_BASE}/purchase-orders/${id}`, {
         method: "DELETE",
         headers: await getAuthHeaders(),
       });
@@ -214,7 +212,7 @@ export function useApprovePurchaseOrder() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseOrderResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/${id}/approve`,
+        `${API_BASE}/purchase-orders/${id}/approve`,
         {
           method: "POST",
           headers: await getAuthHeaders(),
@@ -243,7 +241,7 @@ export function useSubmitPurchaseOrderForApproval() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseOrderResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/${id}/submit-for-approval`,
+        `${API_BASE}/purchase-orders/${id}/submit-for-approval`,
         {
           method: "POST",
           headers: await getAuthHeaders(),
@@ -274,7 +272,7 @@ export function useCancelPurchaseOrder() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseOrderResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/${id}/cancel`,
+        `${API_BASE}/purchase-orders/${id}/cancel`,
         {
           method: "POST",
           headers: await getAuthHeaders(),
@@ -303,7 +301,7 @@ export function useDuplicatePurchaseOrder() {
   return useMutation({
     mutationFn: async (id: number): Promise<PurchaseOrderResponse> => {
       const response = await fetch(
-        `${API_BASE}/api/purchase-orders/${id}/duplicate`,
+        `${API_BASE}/purchase-orders/${id}/duplicate`,
         {
           method: "POST",
           headers: await getAuthHeaders(),
