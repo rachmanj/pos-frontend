@@ -8,14 +8,12 @@ import { Navbar } from "@/components/layout/navbar"
 import { Toaster } from "@/components/ui/toaster"
 import { navigation } from "@/components/layout/navigation-config"
 import { ExtendedSession } from "@/types/auth"
+import { SidebarProvider, useSidebar } from "@/components/layout/sidebar-context"
 
-export default function ProtectedLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
+function LayoutContent({ children }: { children: React.ReactNode }) {
     const { data: session, status } = useSession()
     const router = useRouter()
+    const { isCollapsed } = useSidebar()
 
     // Handle unauthenticated state in useEffect to avoid setState during render
     useEffect(() => {
@@ -54,7 +52,7 @@ export default function ProtectedLayout({
             <Sidebar navigation={navigation} userRoles={userRoles} />
 
             {/* Main content */}
-            <div className="pl-64">
+            <div className={`transition-all duration-300 ${isCollapsed ? 'pl-16' : 'pl-64'}`}>
                 {/* Header */}
                 <Navbar userName={session?.user?.name || undefined} userRoles={userRoles} />
 
@@ -67,5 +65,17 @@ export default function ProtectedLayout({
             {/* Toast notifications */}
             <Toaster />
         </div>
+    )
+}
+
+export default function ProtectedLayout({
+    children,
+}: {
+    children: React.ReactNode
+}) {
+    return (
+        <SidebarProvider>
+            <LayoutContent>{children}</LayoutContent>
+        </SidebarProvider>
     )
 } 
