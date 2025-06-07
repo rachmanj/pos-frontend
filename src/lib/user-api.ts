@@ -373,6 +373,54 @@ export const roleApiWithSession = {
   getRoles: async (session: ExtendedSession | null): Promise<RolesResponse> => {
     return fetchWithSession("/roles", session);
   },
+
+  // Get single role
+  getRole: async (
+    session: ExtendedSession | null,
+    id: number
+  ): Promise<{ role: Role }> => {
+    return fetchWithSession(`/roles/${id}`, session);
+  },
+
+  // Create new role
+  createRole: async (
+    session: ExtendedSession | null,
+    data: CreateRoleData
+  ): Promise<{ message: string; role: Role }> => {
+    return fetchWithSession("/roles", session, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update role
+  updateRole: async (
+    session: ExtendedSession | null,
+    id: number,
+    data: UpdateRoleData
+  ): Promise<{ message: string; role: Role }> => {
+    return fetchWithSession(`/roles/${id}`, session, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete role
+  deleteRole: async (
+    session: ExtendedSession | null,
+    id: number
+  ): Promise<{ message: string }> => {
+    return fetchWithSession(`/roles/${id}`, session, {
+      method: "DELETE",
+    });
+  },
+
+  // Get all permissions grouped
+  getPermissions: async (
+    session: ExtendedSession | null
+  ): Promise<PermissionsResponse> => {
+    return fetchWithSession("/permissions", session);
+  },
 };
 
 // Simple test function to verify API connectivity

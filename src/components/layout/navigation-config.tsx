@@ -69,7 +69,7 @@ export const navigation: NavigationGroup[] = [
         name: "Admin",
         items: [
             { name: "Users", href: "/users", roles: ["super-admin", "manager"], icon: Settings },
-            { name: "Roles & Permissions", href: "/roles-permissions", roles: ["super-admin"], icon: Shield, comingSoon: true },
+            { name: "Roles & Permissions", href: "/roles-permissions", roles: ["super-admin"], icon: Shield },
         ]
     },
     {
