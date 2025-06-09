@@ -133,8 +133,8 @@ export function PurchaseOrdersTable({
 
     const getReceivingStatus = (po: PurchaseOrder) => {
         const totalItems = po.items?.length || 0;
-        const fullyReceivedItems = po.items?.filter(item => item.quantity_received === item.quantity).length || 0;
-        const partiallyReceivedItems = po.items?.filter(item => item.quantity_received > 0 && item.quantity_received < item.quantity).length || 0;
+        const fullyReceivedItems = po.items?.filter(item => item.quantity_received === item.quantity_ordered).length || 0;
+        const partiallyReceivedItems = po.items?.filter(item => item.quantity_received > 0 && item.quantity_received < item.quantity_ordered).length || 0;
 
         if (fullyReceivedItems === totalItems) {
             return { status: "Fully Received", color: "green" };

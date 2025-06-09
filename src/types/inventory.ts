@@ -188,7 +188,8 @@ export interface BaseUnitsResponse {
 
 export interface ProductsResponse {
   data: Product[];
-  pagination: PaginationData;
+  meta?: PaginationData;
+  pagination?: PaginationData;
   message?: string;
 }
 

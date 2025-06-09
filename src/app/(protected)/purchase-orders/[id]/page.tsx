@@ -299,7 +299,7 @@ export default function PurchaseOrderDetailPage() {
                                         {item.product.sku}
                                     </TableCell>
                                     <TableCell>{item.unit.symbol}</TableCell>
-                                    <TableCell className="text-right">{item.quantity}</TableCell>
+                                    <TableCell className="text-right">{item.quantity_ordered}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                                     <TableCell className="text-right font-medium">{formatCurrency(item.total_price)}</TableCell>
                                     <TableCell className="text-right">

@@ -49,7 +49,7 @@ const purchaseOrderSchema = z.object({
     items: z.array(z.object({
         product_id: z.number().min(1, "Product is required"),
         unit_id: z.number().min(1, "Unit is required"),
-        quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+        quantity_ordered: z.number().min(0.01, "Quantity must be greater than 0"),
         unit_price: z.number().min(0, "Unit price must be non-negative"),
     })).min(1, "At least one item is required"),
 });
@@ -81,7 +81,7 @@ export function PurchaseOrderFormDialog({
             order_date: new Date().toISOString().split('T')[0],
             expected_delivery_date: "",
             notes: "",
-            items: [{ product_id: 0, unit_id: 0, quantity: 1, unit_price: 0 }],
+            items: [{ product_id: 0, unit_id: 0, quantity_ordered: 1, unit_price: 0 }],
         },
     });
 
@@ -116,7 +116,7 @@ export function PurchaseOrderFormDialog({
                 items: purchaseOrder.items.map(item => ({
                     product_id: item.product_id,
                     unit_id: item.unit_id,
-                    quantity: item.quantity,
+                    quantity_ordered: item.quantity_ordered,
                     unit_price: item.unit_price,
                 })),
             });
@@ -127,7 +127,7 @@ export function PurchaseOrderFormDialog({
 
     const calculateTotals = () => {
         const subtotal = watchedItems.reduce((sum, item) => {
-            return sum + (item.quantity * item.unit_price);
+            return sum + (item.quantity_ordered * item.unit_price);
         }, 0);
         const taxAmount = subtotal * 0.1; // Assuming 10% tax
         const total = subtotal + taxAmount;
@@ -176,7 +176,7 @@ export function PurchaseOrderFormDialog({
     };
 
     const addItem = () => {
-        append({ product_id: 0, unit_id: 0, quantity: 1, unit_price: 0 });
+        append({ product_id: 0, unit_id: 0, quantity_ordered: 1, unit_price: 0 });
     };
 
     const removeItem = (index: number) => {
@@ -308,7 +308,7 @@ export function PurchaseOrderFormDialog({
                                 {fields.map((field, index) => {
                                     const selectedProduct = getProductById(form.watch(`items.${index}.product_id`));
                                     const availableUnits = getUnitsByProduct(form.watch(`items.${index}.product_id`));
-                                    const itemTotal = form.watch(`items.${index}.quantity`) * form.watch(`items.${index}.unit_price`);
+                                    const itemTotal = form.watch(`items.${index}.quantity_ordered`) * form.watch(`items.${index}.unit_price`);
 
                                     return (
                                         <div key={field.id} className="p-4 border rounded-lg space-y-4">
@@ -420,7 +420,7 @@ export function PurchaseOrderFormDialog({
                                                 <div>
                                                     <FormField
                                                         control={form.control}
-                                                        name={`items.${index}.quantity`}
+                                                        name={`items.${index}.quantity_ordered`}
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Quantity *</FormLabel>

@@ -1,20 +1,38 @@
 "use client"
 
+import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Building2, Package, BarChart3, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogTrigger } from "@/components/ui/dialog"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useWarehouse } from "@/hooks/use-warehouses"
+import { useWarehouse, useUpdateWarehouse } from "@/hooks/use-warehouses"
+import { WarehouseForm } from "@/components/warehouses/warehouse-form"
 import { formatCurrency } from "@/lib/utils"
+import { toast } from "sonner"
 
 export default function WarehouseDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const warehouseId = parseInt(params.id as string)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-    const { data: warehouse, isLoading, error } = useWarehouse(warehouseId)
+    const { data: warehouse, isLoading, error, refetch } = useWarehouse(warehouseId)
+    const updateWarehouseMutation = useUpdateWarehouse()
+
+    const handleUpdateWarehouse = async (data: any) => {
+        try {
+            await updateWarehouseMutation.mutateAsync({ id: warehouseId, data })
+            setIsEditModalOpen(false)
+            refetch()
+            toast.success("Warehouse updated successfully!")
+        } catch (error: any) {
+            console.error("Update warehouse error:", error)
+            toast.error(error?.message || "Failed to update warehouse")
+        }
+    }
 
     if (isLoading) {
         return (
@@ -71,10 +89,42 @@ export default function WarehouseDetailsPage() {
                     {warehouse.is_default && (
                         <Badge variant="outline">Default</Badge>
                     )}
-                    <Button>
-                        <Settings className="h-4 w-4 mr-2" />
-                        Edit Warehouse
-                    </Button>
+                    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <Settings className="h-4 w-4 mr-2" />
+                                Edit Warehouse
+                            </Button>
+                        </DialogTrigger>
+                        <WarehouseForm
+                            onSubmit={handleUpdateWarehouse}
+                            onCancel={() => setIsEditModalOpen(false)}
+                            initialData={{
+                                name: warehouse.name,
+                                code: warehouse.code,
+                                description: warehouse.description,
+                                type: warehouse.type,
+                                status: warehouse.status,
+                                address: warehouse.address,
+                                city: warehouse.city,
+                                state: warehouse.state,
+                                postal_code: warehouse.postal_code,
+                                country: warehouse.country,
+                                phone: warehouse.phone,
+                                email: warehouse.email,
+                                manager_name: warehouse.manager_name,
+                                manager_phone: warehouse.manager_phone,
+                                max_capacity: warehouse.max_capacity,
+                                total_area: warehouse.total_area,
+                                storage_area: warehouse.storage_area,
+                                latitude: warehouse.latitude,
+                                longitude: warehouse.longitude,
+                                is_default: warehouse.is_default,
+                            }}
+                            isLoading={updateWarehouseMutation.isPending}
+                            isEdit={true}
+                        />
+                    </Dialog>
                 </div>
             </div>
 

@@ -15,6 +15,8 @@ import {
     Settings,
     Shield,
     BarChart3,
+    MapPin,
+    Route,
     LucideIcon
 } from "lucide-react"
 
@@ -52,17 +54,26 @@ export const navigation: NavigationGroup[] = [
             { name: "Suppliers", href: "/suppliers", roles: ["super-admin", "manager", "purchasing-manager", "purchasing-clerk"], icon: Users },
             { name: "Purchase Orders", href: "/purchase-orders", roles: ["super-admin", "manager", "purchasing-manager", "purchasing-clerk"], icon: ShoppingCart },
             { name: "Purchase Receipts", href: "/purchase-receipts", roles: ["super-admin", "manager", "purchasing-manager", "warehouse-supervisor"], icon: FileText },
-            { name: "Purchase Payment", href: "/purchase-payments", roles: ["super-admin", "manager", "purchasing-manager"], icon: CreditCard, comingSoon: true },
+            { name: "Purchase Payment", href: "/purchase-payments", roles: ["super-admin", "manager", "purchasing-manager"], icon: CreditCard },
         ]
     },
     {
         name: "Sales",
         items: [
             { name: "POS", href: "/pos", roles: ["super-admin", "manager", "cashier"], icon: Monitor },
-            { name: "Customers", href: "/customers", roles: ["super-admin", "manager", "sales-manager"], icon: UserCheck, comingSoon: true },
+            { name: "Sales Orders", href: "/sales-orders", roles: ["super-admin", "manager", "sales-manager", "sales-rep"], icon: FileText },
+            { name: "Delivery Orders", href: "/delivery-orders", roles: ["super-admin", "manager", "warehouse-manager", "delivery-driver"], icon: Truck },
+            { name: "Sales Invoices", href: "/sales-invoices", roles: ["super-admin", "manager", "finance-manager", "accountant"], icon: Receipt },
+            { name: "Delivery Routes", href: "/delivery-routes", roles: ["super-admin", "manager", "warehouse-manager", "delivery-driver"], icon: Route },
+            { name: "Customers", href: "/customers", roles: ["super-admin", "manager", "sales-manager", "customer-service", "account-manager"], icon: UserCheck },
             { name: "Sales", href: "/sales", roles: ["super-admin", "manager"], icon: TrendingUp },
-            { name: "Sales Delivery", href: "/sales-delivery", roles: ["super-admin", "manager", "sales-manager"], icon: Truck, comingSoon: true },
-            { name: "Sales Receipt", href: "/sales-receipts", roles: ["super-admin", "manager", "sales-manager"], icon: Receipt, comingSoon: true },
+            { name: "Sales Payment Receive", href: "/sales-payment-receive", roles: ["super-admin", "manager", "sales-manager", "finance-manager", "accountant"], icon: MapPin },
+        ]
+    },
+    {
+        name: "Reports",
+        items: [
+            { name: "Reports", href: "/reports", roles: ["super-admin", "manager"], icon: BarChart3 },
         ]
     },
     {
@@ -70,12 +81,6 @@ export const navigation: NavigationGroup[] = [
         items: [
             { name: "Users", href: "/users", roles: ["super-admin", "manager"], icon: Settings },
             { name: "Roles & Permissions", href: "/roles-permissions", roles: ["super-admin"], icon: Shield },
-        ]
-    },
-    {
-        name: "Reports",
-        items: [
-            { name: "Reports", href: "/reports", roles: ["super-admin", "manager"], icon: BarChart3 },
         ]
     },
 ] 

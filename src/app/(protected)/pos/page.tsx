@@ -13,6 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PageHeader } from '@/components/ui/page-header'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
 import {
     Search,
     Plus,
@@ -26,7 +29,10 @@ import {
     Calculator,
     Receipt,
     Check,
-    ChevronsUpDown
+    ChevronsUpDown,
+    AlertTriangle,
+    Clock,
+    DollarSign
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -35,6 +41,7 @@ import * as z from 'zod'
 import { useSales, useCreateSale, useProductSearch, useDailySummary, useActivePaymentMethods } from '@/hooks/useSales'
 import { useCustomers, useCreateCustomer, type Customer } from '@/hooks/useCustomers'
 import { useCashSessions, useOpenCashSession, useCloseCashSession } from '@/hooks/useCashSessions'
+import { useCustomerPaymentReceive } from '@/hooks/useCustomerPaymentReceive'
 
 // Form schemas
 const customerSchema = z.object({
@@ -45,9 +52,12 @@ const customerSchema = z.object({
 })
 
 const paymentSchema = z.object({
+    payment_type: z.enum(['cash', 'credit', 'partial_credit']),
     payment_method_id: z.number(),
     amount: z.number().min(0),
     reference: z.string().optional(),
+    payment_terms_days: z.number().optional(),
+    credit_notes: z.string().optional(),
 })
 
 type CustomerForm = z.infer<typeof customerSchema>
@@ -81,6 +91,7 @@ export default function POSPage() {
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
     const [cashGiven, setCashGiven] = useState<number>(0)
     const [productComboOpen, setProductComboOpen] = useState(false)
+    const [paymentType, setPaymentType] = useState<'cash' | 'credit' | 'partial_credit'>('cash')
     const searchInputRef = useRef<HTMLInputElement>(null)
 
     // Debounce search query to avoid excessive API calls
@@ -97,6 +108,10 @@ export default function POSPage() {
     const openCashSession = useOpenCashSession()
     const closeCashSession = useCloseCashSession()
 
+    // AR hooks for credit checking
+    const { useCustomerOutstanding } = useCustomerPaymentReceive()
+    const { data: customerOutstanding } = useCustomerOutstanding(selectedCustomer?.id || 0)
+
     // Forms
     const customerForm = useForm<CustomerForm>({
         resolver: zodResolver(customerSchema),
@@ -105,6 +120,10 @@ export default function POSPage() {
 
     const paymentForm = useForm<PaymentForm>({
         resolver: zodResolver(paymentSchema),
+        defaultValues: {
+            payment_type: 'cash',
+            payment_terms_days: 30,
+        },
     })
 
     // Focus search on mount
@@ -119,6 +138,52 @@ export default function POSPage() {
     const tax = subtotal * 0.11 // 11% PPN for Indonesia
     const total = subtotal + tax
     const change = cashGiven - total
+
+    // Update payment form when payment type changes
+    useEffect(() => {
+        paymentForm.setValue('payment_type', paymentType)
+        if (paymentType === 'cash') {
+            paymentForm.setValue('amount', total)
+        } else if (paymentType === 'credit') {
+            paymentForm.setValue('amount', 0)
+        }
+    }, [paymentType, total])
+
+    // Credit validation
+    const creditValidation = useMemo(() => {
+        if (!selectedCustomer || !customerOutstanding || paymentType === 'cash') {
+            return { isValid: true, message: '' }
+        }
+
+        const creditLimit = customerOutstanding.credit_limit?.credit_limit || 0
+        const currentBalance = customerOutstanding.customer.current_ar_balance || 0
+        const availableCredit = creditLimit - currentBalance
+        const newBalance = currentBalance + total
+
+        if (creditLimit === 0) {
+            return {
+                isValid: false,
+                message: 'Customer has no credit limit set. Please contact finance department.'
+            }
+        }
+
+        if (newBalance > creditLimit) {
+            return {
+                isValid: false,
+                message: `Credit limit exceeded. Available credit: ${formatCurrency(availableCredit)}`
+            }
+        }
+
+        // Note: ar_status is not available in current customer type, will be added in future enhancement
+        // if (customerOutstanding.customer.ar_status === 'suspended' || customerOutstanding.customer.ar_status === 'collection') {
+        //     return { 
+        //         isValid: false, 
+        //         message: 'Customer account is suspended. Please contact finance department.' 
+        //     }
+        // }
+
+        return { isValid: true, message: '' }
+    }, [selectedCustomer, customerOutstanding, paymentType, total])
 
     // Add product to cart
     const addToCart = (product: any) => {
@@ -169,6 +234,7 @@ export default function POSPage() {
         setCart([])
         setSelectedCustomer(null)
         setCashGiven(0)
+        setPaymentType('cash')
     }
 
     // Create new customer
@@ -187,16 +253,24 @@ export default function POSPage() {
     const onProcessSale = async (data: PaymentForm) => {
         if (cart.length === 0) return
 
+        // Validate credit sale
+        if (data.payment_type !== 'cash' && !creditValidation.isValid) {
+            return
+        }
+
         try {
             await createSale.mutateAsync({
                 warehouse_id: cart[0]?.warehouse_id || 1,
                 customer_id: selectedCustomer?.id,
+                payment_type: data.payment_type,
+                payment_terms_days: data.payment_terms_days,
+                credit_notes: data.credit_notes,
                 items: cart.map(item => ({
                     product_id: item.product_id,
                     quantity: item.quantity,
                     unit_price: item.price,
                 })),
-                payments: [{
+                payments: data.payment_type === 'credit' ? [] : [{
                     payment_method_id: data.payment_method_id,
                     amount: data.amount,
                     reference_number: data.reference,
@@ -448,6 +522,29 @@ export default function POSPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+
+                            {/* Customer AR Balance Display */}
+                            {selectedCustomer && customerOutstanding && (
+                                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-muted-foreground">AR Balance:</span>
+                                        <span className={`font-medium ${(customerOutstanding.customer.current_ar_balance || 0) > 0
+                                            ? 'text-red-600'
+                                            : 'text-green-600'
+                                            }`}>
+                                            {formatCurrency(customerOutstanding.customer.current_ar_balance || 0)}
+                                        </span>
+                                    </div>
+                                    {customerOutstanding.credit_limit && (
+                                        <div className="flex items-center justify-between text-sm mt-1">
+                                            <span className="text-muted-foreground">Available Credit:</span>
+                                            <span className="font-medium text-green-600">
+                                                {formatCurrency(customerOutstanding.credit_limit.available_credit || 0)}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -560,53 +657,203 @@ export default function POSPage() {
 
                                                     <FormField
                                                         control={paymentForm.control}
-                                                        name="payment_method_id"
+                                                        name="payment_type"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel>Payment Method</FormLabel>
-                                                                <Select
-                                                                    value={field.value?.toString() ?? ''}
-                                                                    onValueChange={(value) => field.onChange(Number(value))}
-                                                                >
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select payment method" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="1">Cash</SelectItem>
-                                                                        <SelectItem value="2">Credit Card</SelectItem>
-                                                                        <SelectItem value="3">Debit Card</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={paymentForm.control}
-                                                        name="amount"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Amount</FormLabel>
+                                                                <FormLabel>Payment Type</FormLabel>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        type="number"
-                                                                        {...field}
-                                                                        onChange={(e) => field.onChange(Number(e.target.value))}
-                                                                    />
+                                                                    <RadioGroup
+                                                                        value={field.value}
+                                                                        onValueChange={(value) => {
+                                                                            field.onChange(value)
+                                                                            setPaymentType(value as 'cash' | 'credit' | 'partial_credit')
+                                                                        }}
+                                                                        className="flex flex-col space-y-2"
+                                                                    >
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <RadioGroupItem value="cash" id="cash" />
+                                                                            <Label htmlFor="cash">Cash Sale</Label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <RadioGroupItem
+                                                                                value="credit"
+                                                                                id="credit"
+                                                                                disabled={!selectedCustomer}
+                                                                            />
+                                                                            <Label htmlFor="credit">Credit Sale</Label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <RadioGroupItem
+                                                                                value="partial_credit"
+                                                                                id="partial_credit"
+                                                                                disabled={!selectedCustomer}
+                                                                            />
+                                                                            <Label htmlFor="partial_credit">Partial Credit</Label>
+                                                                        </div>
+                                                                    </RadioGroup>
                                                                 </FormControl>
                                                                 <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
 
+                                                    {/* Customer AR Information */}
+                                                    {selectedCustomer && paymentType !== 'cash' && (
+                                                        <div className="space-y-3">
+                                                            <div className="bg-blue-50 p-3 rounded-lg">
+                                                                <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                                                                    <User className="h-4 w-4 mr-2" />
+                                                                    Customer Credit Information
+                                                                </h4>
+                                                                <div className="space-y-1 text-sm">
+                                                                    <div className="flex justify-between">
+                                                                        <span>Current AR Balance:</span>
+                                                                        <span className="font-medium">
+                                                                            {formatCurrency(customerOutstanding?.customer.current_ar_balance || 0)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span>Credit Limit:</span>
+                                                                        <span className="font-medium">
+                                                                            {formatCurrency(customerOutstanding?.credit_limit?.credit_limit || 0)}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span>Available Credit:</span>
+                                                                        <span className="font-medium text-green-600">
+                                                                            {formatCurrency(customerOutstanding?.credit_limit?.available_credit || 0)}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Credit Validation Alert */}
+                                                            {!creditValidation.isValid && (
+                                                                <Alert className="border-red-200 bg-red-50">
+                                                                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                                                                    <AlertDescription className="text-red-800">
+                                                                        {creditValidation.message}
+                                                                    </AlertDescription>
+                                                                </Alert>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Credit Terms for Credit Sales */}
+                                                    {paymentType === 'credit' && (
+                                                        <FormField
+                                                            control={paymentForm.control}
+                                                            name="payment_terms_days"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Payment Terms (Days)</FormLabel>
+                                                                    <FormControl>
+                                                                        <Select
+                                                                            value={field.value?.toString() || '30'}
+                                                                            onValueChange={(value) => field.onChange(Number(value))}
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Select payment terms" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="15">Net 15</SelectItem>
+                                                                                <SelectItem value="30">Net 30</SelectItem>
+                                                                                <SelectItem value="60">Net 60</SelectItem>
+                                                                                <SelectItem value="90">Net 90</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    )}
+
+                                                    {/* Payment Method Selection */}
+                                                    {paymentType !== 'credit' && (
+                                                        <FormField
+                                                            control={paymentForm.control}
+                                                            name="payment_method_id"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Payment Method</FormLabel>
+                                                                    <FormControl>
+                                                                        <Select
+                                                                            value={field.value?.toString() || ''}
+                                                                            onValueChange={(value) => field.onChange(Number(value))}
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Select payment method" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {paymentMethods?.map((method: any) => (
+                                                                                    <SelectItem key={method.id} value={method.id.toString()}>
+                                                                                        {method.name}
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    )}
+
+                                                    {/* Amount Field */}
+                                                    {paymentType !== 'credit' && (
+                                                        <FormField
+                                                            control={paymentForm.control}
+                                                            name="amount"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>
+                                                                        {paymentType === 'partial_credit' ? 'Payment Amount' : 'Amount'}
+                                                                    </FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            type="number"
+                                                                            {...field}
+                                                                            onChange={(e) => field.onChange(Number(e.target.value))}
+                                                                            placeholder={paymentType === 'partial_credit' ? 'Enter partial payment amount' : 'Enter payment amount'}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    )}
+
+                                                    {/* Credit Notes */}
+                                                    {paymentType !== 'cash' && (
+                                                        <FormField
+                                                            control={paymentForm.control}
+                                                            name="credit_notes"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Credit Notes (Optional)</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            {...field}
+                                                                            placeholder="Add notes for credit approval"
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    )}
+
                                                     <div className="flex justify-end space-x-2">
                                                         <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
                                                             Cancel
                                                         </Button>
-                                                        <Button type="submit">Complete Sale</Button>
+                                                        <Button
+                                                            type="submit"
+                                                            disabled={paymentType !== 'cash' && !creditValidation.isValid}
+                                                        >
+                                                            {paymentType === 'credit' ? 'Create Credit Sale' : 'Complete Sale'}
+                                                        </Button>
                                                     </div>
                                                 </form>
                                             </Form>

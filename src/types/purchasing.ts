@@ -62,7 +62,7 @@ export interface PurchaseOrderItem {
   purchase_order_id: number;
   product_id: number;
   unit_id: number;
-  quantity: number;
+  quantity_ordered: number;
   unit_price: number;
   total_price: number;
   quantity_received: number;
@@ -166,7 +166,7 @@ export interface CreatePurchaseOrderData {
   items: {
     product_id: number;
     unit_id: number;
-    quantity: number;
+    quantity_ordered: number;
     unit_price: number;
   }[];
 }
@@ -180,7 +180,7 @@ export interface UpdatePurchaseOrderData {
     id?: number;
     product_id: number;
     unit_id: number;
-    quantity: number;
+    quantity_ordered: number;
     unit_price: number;
   }[];
 }

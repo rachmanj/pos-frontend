@@ -103,6 +103,9 @@ export interface CreateSaleData {
   warehouse_id: number;
   customer_id?: number;
   cash_session_id?: number;
+  payment_type?: "cash" | "credit" | "partial_credit";
+  payment_terms_days?: number;
+  credit_notes?: string;
   items: Array<{
     product_id: number;
     quantity: number;
