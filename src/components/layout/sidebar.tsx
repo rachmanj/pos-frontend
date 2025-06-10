@@ -32,7 +32,7 @@ export function Sidebar({ navigation, userRoles }: SidebarProps) {
             <div className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-gray-800 px-4">
                 {!isCollapsed && (
                     <Link href="/dashboard" className="text-xl font-bold text-gray-900 dark:text-white">
-                        POS-ATK
+                        Sarange ERP
                     </Link>
                 )}
                 <Button

@@ -88,8 +88,8 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">POS-ATK</h1>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Point of Sale System</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Sarange ERP</h1>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Enterprise Resource Planning System</p>
                 </div>
 
                 <Card>
@@ -183,9 +183,9 @@ export default function LoginPage() {
                         <div className="mt-4 text-center">
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Demo accounts:<br />
-                                Admin: admin@pos-atk.com / password<br />
-                                Manager: manager@pos-atk.com / password<br />
-                                Cashier: cashier@pos-atk.com / password
+                                Admin: admin@sarange-erp.com / password<br />
+                                Manager: manager@sarange-erp.com / password<br />
+                                Cashier: cashier@sarange-erp.com / password
                             </p>
                         </div>
                     </CardContent>
