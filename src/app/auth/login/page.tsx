@@ -181,12 +181,12 @@ export default function LoginPage() {
                         </div>
 
                         <div className="mt-4 text-center">
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {/* <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Demo accounts:<br />
                                 Admin: admin@sarange-erp.com / password<br />
                                 Manager: manager@sarange-erp.com / password<br />
                                 Cashier: cashier@sarange-erp.com / password
-                            </p>
+                            </p> */}
                         </div>
                     </CardContent>
                 </Card>
