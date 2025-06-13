@@ -27,11 +27,13 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSuppliers } from "@/hooks/use-suppliers";
 import { useCreatePurchaseOrder } from "@/hooks/use-purchase-orders";
 import { useProducts, useSearchProducts } from "@/hooks/useInventory";
 import { formatCurrency } from "@/lib/utils";
+import { getEffectiveTaxRate, calculateLineItemTotals, COMMON_TAX_RATES, formatTaxRate, calculateOrderTaxBreakdown } from "@/lib/tax-config";
+import { TaxRateSelector } from "@/components/ui/tax-rate-selector";
 import type { CreatePurchaseOrderData } from "@/types/purchasing";
 
 const purchaseOrderSchema = z.object({
@@ -98,16 +100,24 @@ export default function CreatePurchaseOrderPage() {
 
     const watchedItems = form.watch("items");
 
+    // Helper function to get product by ID - must be declared before use
+    const getProductById = (productId: number) => {
+        return productsData?.data?.find(p => p.id === productId);
+    };
+
     const calculateTotals = () => {
         const subtotal = watchedItems.reduce((sum, item) => {
             return sum + (item.quantity_ordered * item.unit_price);
         }, 0);
 
-        // Calculate tax only for items with VAT enabled
+        // Calculate tax using product-specific tax rates or system default
         const taxAmount = watchedItems.reduce((sum, item, index) => {
             const includeVat = itemVatSettings[index] ?? true; // Default to true if not set
             if (includeVat) {
-                return sum + (item.quantity_ordered * item.unit_price * 0.1); // 10% tax on VAT-enabled items
+                const product = getProductById(item.product_id);
+                const effectiveTaxRate = getEffectiveTaxRate(product);
+                const itemSubtotal = item.quantity_ordered * item.unit_price;
+                return sum + (itemSubtotal * effectiveTaxRate / 100);
             }
             return sum;
         }, 0);
@@ -146,18 +156,11 @@ export default function CreatePurchaseOrderPage() {
             console.log("Submit data after conversion:", JSON.stringify(submitData, null, 2));
 
             await createPurchaseOrder.mutateAsync(submitData);
-            toast({
-                title: "Success",
-                description: "Purchase order created successfully",
-            });
+            toast.success("Purchase order created successfully");
             router.push("/purchase-orders");
         } catch (error: any) {
             console.error("Submission error:", error);
-            toast({
-                title: "Error",
-                description: error.message || "Failed to create purchase order",
-                variant: "destructive",
-            });
+            toast.error(error.message || "Failed to create purchase order");
         }
     };
 
@@ -169,10 +172,6 @@ export default function CreatePurchaseOrderPage() {
         if (fields.length > 1) {
             remove(index);
         }
-    };
-
-    const getProductById = (productId: number) => {
-        return productsData?.data?.find(p => p.id === productId);
     };
 
     const getUnitsByProduct = (productId: number) => {
@@ -505,7 +504,9 @@ export default function CreatePurchaseOrderPage() {
                                                 <div className="mt-1 text-sm font-medium text-gray-700">
                                                     Total: {formatCurrency(itemTotal)}
                                                     {includeVat && (
-                                                        <span className="text-xs text-gray-500 ml-1">(incl. VAT)</span>
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            (incl. {formatTaxRate(getEffectiveTaxRate(selectedProduct))} tax)
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
@@ -547,7 +548,7 @@ export default function CreatePurchaseOrderPage() {
                                     <span className="font-medium">{formatCurrency(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>Tax (10%):</span>
+                                    <span>Tax (Dynamic Rate):</span>
                                     <span className="font-medium">{formatCurrency(taxAmount)}</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold border-t pt-2">

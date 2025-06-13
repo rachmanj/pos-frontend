@@ -17,6 +17,7 @@ import {
     BarChart3,
     MapPin,
     Route,
+    Calculator,
     LucideIcon
 } from "lucide-react"
 
@@ -68,6 +69,12 @@ export const navigation: NavigationGroup[] = [
             { name: "Customers", href: "/customers", roles: ["super-admin", "manager", "sales-manager", "customer-service", "account-manager"], icon: UserCheck },
             { name: "Sales", href: "/sales", roles: ["super-admin", "manager"], icon: TrendingUp },
             { name: "Sales Payment Receive", href: "/sales-payment-receive", roles: ["super-admin", "manager", "sales-manager", "finance-manager", "accountant"], icon: MapPin },
+        ]
+    },
+    {
+        name: "Finance",
+        items: [
+            { name: "Tax Management", href: "/tax-management", roles: ["super-admin", "manager", "finance-manager", "accountant"], icon: Calculator },
         ]
     },
     {

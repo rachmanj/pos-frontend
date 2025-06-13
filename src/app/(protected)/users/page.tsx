@@ -37,7 +37,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { directUserApi, directRoleApi, setStoredToken } from '@/lib/user-api';
 import { User, Role } from '@/types/auth';
 import {
@@ -66,7 +66,7 @@ export default function UsersPage() {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
-    const { showToast } = useToast();
+    // Toast functionality now handled by Sonner
     const { data: session, status } = useSession();
 
     // Store token in localStorage when session is available
@@ -100,7 +100,7 @@ export default function UsersPage() {
         } catch (error: unknown) {
             console.error("Failed to fetch users:", error);
             const errorMessage = error instanceof Error ? error.message : "Failed to fetch users";
-            showToast(errorMessage, "error");
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -154,12 +154,12 @@ export default function UsersPage() {
 
         try {
             await directUserApi.deleteUser(deletingUser.id);
-            showToast("User deleted successfully", "success", 3000);
+            toast.success("User deleted successfully");
             fetchUsers(); // Refresh the list
         } catch (error: unknown) {
             console.error("Failed to delete user:", error);
             const errorMessage = error instanceof Error ? error.message : "Failed to delete user";
-            showToast(errorMessage, "error");
+            toast.error(errorMessage);
         } finally {
             setShowDeleteDialog(false);
             setDeletingUser(null);

@@ -24,6 +24,12 @@ export interface CustomerCrm {
   customer_notes?: string;
   preferences?: Record<string, any>;
 
+  // Tax Configuration
+  tax_exempt?: boolean;
+  tax_rate_override?: number;
+  exemption_reason?: string;
+  exemption_details?: string;
+
   // Enhanced CRM fields
   business_type?: "individual" | "company" | "government" | "ngo";
   industry?: string;
@@ -207,6 +213,12 @@ export interface CustomerCrmFormData {
   tax_number?: string;
   company_name?: string;
   notes?: string;
+
+  // Tax Configuration
+  tax_exempt?: boolean;
+  tax_rate_override?: number;
+  exemption_reason?: string;
+  exemption_details?: string;
 
   // Enhanced CRM fields
   business_type?: "individual" | "company" | "government" | "ngo";

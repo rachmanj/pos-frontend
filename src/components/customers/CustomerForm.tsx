@@ -27,6 +27,9 @@ import {
     useUpdateCustomerCrm,
     useCustomerCrmDropdownData
 } from "@/hooks/useCustomerCrm";
+import { TaxRateSelector } from "@/components/ui/tax-rate-selector";
+import { TAX_EXEMPTION_REASONS, formatTaxRate } from "@/lib/tax-config";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Comprehensive form validation schema
 const customerFormSchema = z.object({
@@ -53,6 +56,12 @@ const customerFormSchema = z.object({
     tax_number: z.string().optional(),
     company_name: z.string().optional(),
     notes: z.string().optional(),
+
+    // Tax Configuration
+    tax_exempt: z.boolean().optional(),
+    tax_rate_override: z.number().min(0).max(100).optional(),
+    exemption_reason: z.string().optional(),
+    exemption_details: z.string().optional(),
 
     // Enhanced CRM Fields
     business_type: z.enum(["individual", "company", "government", "ngo"]).optional(),
@@ -124,6 +133,10 @@ export function CustomerForm({ open, onOpenChange, customer, onSuccess }: Custom
                 tax_number: customer.tax_number || "",
                 company_name: customer.company_name || "",
                 notes: customer.customer_notes || "",
+                tax_exempt: customer.tax_exempt || false,
+                tax_rate_override: customer.tax_rate_override,
+                exemption_reason: customer.exemption_reason || "",
+                exemption_details: customer.exemption_details || "",
                 business_type: customer.business_type,
                 industry: customer.industry || "",
                 company_size: customer.company_size,
@@ -165,16 +178,15 @@ export function CustomerForm({ open, onOpenChange, customer, onSuccess }: Custom
                     id: customer.id,
                     ...formData,
                 });
-                toast.success("Customer updated successfully");
             } else {
                 await createCustomer.mutateAsync(formData);
-                toast.success("Customer created successfully");
             }
 
             onOpenChange(false);
             onSuccess?.();
-        } catch {
-            toast.error(customer ? "Failed to update customer" : "Failed to create customer");
+        } catch (error) {
+            // Error handling is done in the hooks, but we can add specific form validation errors here
+            console.error("Customer form submission error:", error);
         }
     };
 
@@ -616,6 +628,90 @@ export function CustomerForm({ open, onOpenChange, customer, onSuccess }: Custom
                                                 </SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Tax Configuration Section */}
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h4 className="text-sm font-medium mb-2">Tax Configuration</h4>
+                                            <p className="text-xs text-muted-foreground">Configure tax exemptions and custom rates for this customer</p>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="tax_exempt"
+                                                checked={form.watch("tax_exempt") || false}
+                                                onCheckedChange={(checked) => {
+                                                    form.setValue("tax_exempt", !!checked);
+                                                    if (checked) {
+                                                        form.setValue("tax_rate_override", undefined);
+                                                    }
+                                                }}
+                                            />
+                                            <Label htmlFor="tax_exempt" className="text-sm font-medium">
+                                                Tax Exempt Customer
+                                            </Label>
+                                        </div>
+
+                                        {form.watch("tax_exempt") && (
+                                            <div className="ml-6 space-y-3 p-3 border rounded-lg bg-gray-50">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="exemption_reason">Exemption Reason</Label>
+                                                    <Select
+                                                        value={form.watch("exemption_reason") || ""}
+                                                        onValueChange={(value) => form.setValue("exemption_reason", value)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select exemption reason" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {TAX_EXEMPTION_REASONS.map((reason) => (
+                                                                <SelectItem key={reason.value} value={reason.value}>
+                                                                    {reason.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {(form.watch("exemption_reason") === "other" || form.watch("exemption_reason")) && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="exemption_details">Additional Details</Label>
+                                                        <Textarea
+                                                            id="exemption_details"
+                                                            {...form.register("exemption_details")}
+                                                            placeholder="Provide additional details about the tax exemption..."
+                                                            rows={2}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {!form.watch("tax_exempt") && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tax_rate_override">Custom Tax Rate (%)</Label>
+                                                <Input
+                                                    id="tax_rate_override"
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.01"
+                                                    {...form.register("tax_rate_override", { valueAsNumber: true })}
+                                                    placeholder="Leave empty to use default rate"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Override the default tax rate for this customer. Leave empty to use system default (11% Indonesian PPN).
+                                                </p>
+                                                {form.watch("tax_rate_override") && (
+                                                    <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                                        <strong>Preview:</strong> This customer will be charged {formatTaxRate(form.watch("tax_rate_override") || 0)} tax instead of the default rate.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

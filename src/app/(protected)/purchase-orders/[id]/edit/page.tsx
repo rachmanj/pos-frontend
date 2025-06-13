@@ -34,6 +34,7 @@ import { useSuppliers } from "@/hooks/use-suppliers";
 import { usePurchaseOrder, useUpdatePurchaseOrder } from "@/hooks/use-purchase-orders";
 import { useProducts } from "@/hooks/useInventory";
 import { formatCurrency } from "@/lib/utils";
+import { getEffectiveTaxRate, calculateLineItemTotals, COMMON_TAX_RATES, formatTaxRate } from "@/lib/tax-config";
 import type { PurchaseOrder, CreatePurchaseOrderData } from "@/types/purchasing";
 
 const purchaseOrderSchema = z.object({
@@ -129,7 +130,15 @@ export default function EditPurchaseOrderPage() {
         const subtotal = watchedItems.reduce((sum, item) => {
             return sum + (item.quantity_ordered * item.unit_price);
         }, 0);
-        const taxAmount = subtotal * 0.1; // Assuming 10% tax
+
+        // Calculate tax using product-specific tax rates or system default (11%)
+        const taxAmount = watchedItems.reduce((sum, item) => {
+            const product = getProductById(item.product_id);
+            const effectiveTaxRate = getEffectiveTaxRate(product);
+            const itemSubtotal = item.quantity_ordered * item.unit_price;
+            return sum + (itemSubtotal * effectiveTaxRate / 100);
+        }, 0);
+
         const total = subtotal + taxAmount;
 
         return { subtotal, taxAmount, total };

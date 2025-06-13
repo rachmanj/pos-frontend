@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Navbar } from "@/components/layout/navbar"
-import { Toaster } from "@/components/ui/toaster"
+// Toaster now handled in providers.tsx
 import { navigation } from "@/components/layout/navigation-config"
 import { ExtendedSession } from "@/types/auth"
 import { SidebarProvider, useSidebar } from "@/components/layout/sidebar-context"
@@ -62,8 +62,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 </main>
             </div>
 
-            {/* Toast notifications */}
-            <Toaster />
+            {/* Toast notifications now handled in providers.tsx */}
         </div>
     )
 }

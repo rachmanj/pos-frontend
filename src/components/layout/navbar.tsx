@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { ClientOnly } from "@/components/client-only"
-import { useToast } from "@/components/ui/toast"
+import { toast } from "sonner"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,20 +26,19 @@ interface NavbarProps {
 
 export function Navbar({ userName, userRoles }: NavbarProps) {
     const router = useRouter()
-    const { showToast } = useToast()
     const [showLogoutDialog, setShowLogoutDialog] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
 
     const handleLogoutConfirm = async () => {
         setIsLoggingOut(true)
         try {
-            showToast("Logging out...", "info", 2000)
+            toast.info("Logging out...")
             await signOut({ redirect: false })
-            showToast("Successfully logged out", "success", 2000)
+            toast.success("Successfully logged out")
             router.push("/auth/login")
         } catch (error) {
             console.error("Logout error:", error)
-            showToast("An error occurred during logout. Please try again.", "error")
+            toast.error("An error occurred during logout. Please try again.")
         } finally {
             setIsLoggingOut(false)
             setShowLogoutDialog(false)

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Plus, Save, ArrowLeft, Package, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSalesOrders } from '@/hooks/useSalesOrders';
+import {
+    useSalesOrderCustomers,
+    useSalesOrderWarehouses,
+    useSalesOrderProducts,
+    useSalesOrderSalesReps
+} from '@/hooks/useSalesOrderDropdowns';
 import { SalesOrder, SalesOrderFormData } from '@/types/sales-orders';
 import { formatCurrency } from '@/lib/utils';
 
@@ -55,19 +61,25 @@ export const SalesOrderForm: React.FC<SalesOrderFormProps> = ({
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<number>(order?.warehouse_id || 0);
 
     const {
-        useGetCustomers,
-        useGetWarehouses,
-        useGetProducts,
-        useGetSalesReps,
         useCreateSalesOrder,
         useUpdateSalesOrder,
     } = useSalesOrders();
 
-    // Fetch data for dropdowns
-    const { data: customers = [] } = useGetCustomers();
-    const { data: warehouses = [] } = useGetWarehouses();
-    const { data: products = [] } = useGetProducts(selectedWarehouseId > 0 ? selectedWarehouseId : undefined);
-    const { data: salesReps = [] } = useGetSalesReps();
+    // Fetch data for dropdowns using individual hooks
+    const { data: customers = [], isLoading: customersLoading, error: customersError } = useSalesOrderCustomers();
+    const { data: warehouses = [], isLoading: warehousesLoading } = useSalesOrderWarehouses();
+    const { data: products = [] } = useSalesOrderProducts(selectedWarehouseId > 0 ? selectedWarehouseId : undefined);
+    const { data: salesReps = [] } = useSalesOrderSalesReps();
+
+    // Debug logging for customer data
+    useEffect(() => {
+        console.log('🔍 Customer data debug:', {
+            customers,
+            customersLoading,
+            customersError,
+            customersLength: customers?.length
+        });
+    }, [customers, customersLoading, customersError]);
 
     // Mutations
     const createSalesOrder = useCreateSalesOrder();
@@ -76,8 +88,8 @@ export const SalesOrderForm: React.FC<SalesOrderFormProps> = ({
     const form = useForm<SalesOrderFormValues>({
         resolver: zodResolver(salesOrderFormSchema),
         defaultValues: {
-            customer_id: order?.customer_id || 0,
-            warehouse_id: order?.warehouse_id || 0,
+            customer_id: order?.customer_id || 1, // Default to first customer instead of 0
+            warehouse_id: order?.warehouse_id || 1, // Default to first warehouse instead of 0
             order_date: order?.order_date || new Date().toISOString().split('T')[0],
             requested_delivery_date: order?.requested_delivery_date || "",
             payment_terms_days: order?.payment_terms_days || 30,
@@ -196,20 +208,44 @@ export const SalesOrderForm: React.FC<SalesOrderFormProps> = ({
                                         <FormItem>
                                             <FormLabel>Customer</FormLabel>
                                             <Select
-                                                value={field.value.toString()}
-                                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                                value={field.value > 0 ? field.value.toString() : ""}
+                                                onValueChange={(value) => field.onChange(parseInt(value) || 0)}
+                                                disabled={customersLoading}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select customer" />
+                                                        <SelectValue
+                                                            placeholder={
+                                                                customersLoading
+                                                                    ? "Loading customers..."
+                                                                    : customersError
+                                                                        ? "Error loading customers"
+                                                                        : "Select customer"
+                                                            }
+                                                        />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {customers.map((customer: any) => (
-                                                        <SelectItem key={customer.id} value={customer.id.toString()}>
-                                                            {customer.name}
+                                                    {customersError ? (
+                                                        <SelectItem value="error" disabled>
+                                                            Error loading customers
                                                         </SelectItem>
-                                                    ))}
+                                                    ) : customers.length === 0 ? (
+                                                        <SelectItem value="empty" disabled>
+                                                            No customers found
+                                                        </SelectItem>
+                                                    ) : (
+                                                        customers.map((customer: any) => (
+                                                            <SelectItem key={customer.id} value={customer.id.toString()}>
+                                                                {customer.name}
+                                                                {customer.customer_code && (
+                                                                    <span className="text-sm text-gray-500 ml-2">
+                                                                        ({customer.customer_code})
+                                                                    </span>
+                                                                )}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -224,23 +260,38 @@ export const SalesOrderForm: React.FC<SalesOrderFormProps> = ({
                                         <FormItem>
                                             <FormLabel>Warehouse</FormLabel>
                                             <Select
-                                                value={field.value.toString()}
+                                                value={field.value > 0 ? field.value.toString() : ""}
                                                 onValueChange={(value) => {
-                                                    field.onChange(parseInt(value));
-                                                    setSelectedWarehouseId(parseInt(value));
+                                                    const warehouseId = parseInt(value) || 0;
+                                                    field.onChange(warehouseId);
+                                                    setSelectedWarehouseId(warehouseId);
                                                 }}
+                                                disabled={warehousesLoading}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select warehouse" />
+                                                        <SelectValue placeholder={
+                                                            warehousesLoading ? "Loading warehouses..." : "Select warehouse"
+                                                        } />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {warehouses.map((warehouse: any) => (
-                                                        <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
-                                                            {warehouse.name}
+                                                    {warehouses.length === 0 ? (
+                                                        <SelectItem value="empty" disabled>
+                                                            No warehouses found
                                                         </SelectItem>
-                                                    ))}
+                                                    ) : (
+                                                        warehouses.map((warehouse: any) => (
+                                                            <SelectItem key={warehouse.id} value={warehouse.id.toString()}>
+                                                                {warehouse.name}
+                                                                {warehouse.location && (
+                                                                    <span className="text-sm text-gray-500 ml-2">
+                                                                        ({warehouse.location})
+                                                                    </span>
+                                                                )}
+                                                            </SelectItem>
+                                                        ))
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -386,20 +437,41 @@ export const SalesOrderForm: React.FC<SalesOrderFormProps> = ({
                                                         <FormItem>
                                                             <FormLabel>Product</FormLabel>
                                                             <Select
-                                                                value={field.value.toString()}
-                                                                onValueChange={(value) => field.onChange(parseInt(value))}
+                                                                value={field.value > 0 ? field.value.toString() : ""}
+                                                                onValueChange={(value) => field.onChange(parseInt(value) || 0)}
                                                             >
                                                                 <FormControl>
                                                                     <SelectTrigger>
-                                                                        <SelectValue placeholder="Select product" />
+                                                                        <SelectValue placeholder={
+                                                                            selectedWarehouseId === 0
+                                                                                ? "Select warehouse first"
+                                                                                : products.length === 0
+                                                                                    ? "No products available"
+                                                                                    : "Select product"
+                                                                        } />
                                                                     </SelectTrigger>
                                                                 </FormControl>
                                                                 <SelectContent>
-                                                                    {products.map((product: any) => (
-                                                                        <SelectItem key={product.id} value={product.id.toString()}>
-                                                                            {product.name}
+                                                                    {selectedWarehouseId === 0 ? (
+                                                                        <SelectItem value="no-warehouse" disabled>
+                                                                            Please select a warehouse first
                                                                         </SelectItem>
-                                                                    ))}
+                                                                    ) : products.length === 0 ? (
+                                                                        <SelectItem value="no-products" disabled>
+                                                                            No products available in this warehouse
+                                                                        </SelectItem>
+                                                                    ) : (
+                                                                        products.map((product: any) => (
+                                                                            <SelectItem key={product.id} value={product.id.toString()}>
+                                                                                <div className="flex flex-col">
+                                                                                    <span>{product.name}</span>
+                                                                                    <span className="text-xs text-gray-500">
+                                                                                        SKU: {product.sku} | Stock: {product.available_stock || 0}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </SelectItem>
+                                                                        ))
+                                                                    )}
                                                                 </SelectContent>
                                                             </Select>
                                                             <FormMessage />

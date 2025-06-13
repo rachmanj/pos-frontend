@@ -6,8 +6,11 @@
 // ============================================================================
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { ExtendedSession } from "@/types/auth";
 import {
   type SalesOrder,
   type SalesOrderFilters,
@@ -21,16 +24,42 @@ import {
   type SalesOrderStats,
 } from "@/types/sales-orders";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
 // Auth token hook for API calls
 export const useAuthToken = () => {
-  const getAuthHeaders = () => {
-    if (typeof window === "undefined") return {};
+  const { data: session } = useSession();
 
-    const token = localStorage.getItem("auth_token");
+  useEffect(() => {
+    if (typeof window !== "undefined" && session) {
+      const extendedSession = session as unknown as ExtendedSession;
+
+      // Check if the session has an accessToken
+      if (extendedSession.accessToken) {
+        const currentToken = localStorage.getItem("access_token");
+
+        // Only update if token has changed
+        if (currentToken !== extendedSession.accessToken) {
+          localStorage.setItem("access_token", extendedSession.accessToken);
+        }
+      }
+    }
+  }, [session]);
+
+  const getAuthHeaders = async () => {
+    const token = localStorage.getItem("access_token");
+    return {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    };
+  };
+
+  const getAuthHeadersSync = () => {
+    const token = localStorage.getItem("access_token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  return { getAuthHeaders };
+  return { getAuthHeaders, getAuthHeadersSync };
 };
 
 // ============================================================================
@@ -38,22 +67,22 @@ export const useAuthToken = () => {
 // ============================================================================
 
 const SALES_ORDERS_ENDPOINTS = {
-  LIST: "/api/sales-orders",
-  SHOW: (id: number) => `/api/sales-orders/${id}`,
-  STORE: "/api/sales-orders",
-  UPDATE: (id: number) => `/api/sales-orders/${id}`,
-  DELETE: (id: number) => `/api/sales-orders/${id}`,
-  CONFIRM: (id: number) => `/api/sales-orders/${id}/confirm`,
-  APPROVE: (id: number) => `/api/sales-orders/${id}/approve`,
-  CANCEL: (id: number) => `/api/sales-orders/${id}/cancel`,
-  STATS: "/api/sales-orders/stats",
-  CUSTOMERS: "/api/sales-orders/customers",
-  WAREHOUSES: "/api/sales-orders/warehouses",
+  LIST: "/sales-orders",
+  SHOW: (id: number) => `/sales-orders/${id}`,
+  STORE: "/sales-orders",
+  UPDATE: (id: number) => `/sales-orders/${id}`,
+  DELETE: (id: number) => `/sales-orders/${id}`,
+  CONFIRM: (id: number) => `/sales-orders/${id}/confirm`,
+  APPROVE: (id: number) => `/sales-orders/${id}/approve`,
+  CANCEL: (id: number) => `/sales-orders/${id}/cancel`,
+  STATS: "/sales-orders/stats",
+  CUSTOMERS: "/sales-orders/customers",
+  WAREHOUSES: "/sales-orders/warehouses",
   PRODUCTS: (warehouseId?: number) =>
     warehouseId
-      ? `/api/sales-orders/products?warehouse_id=${warehouseId}`
-      : "/api/sales-orders/products",
-  SALES_REPS: "/api/sales-orders/sales-reps",
+      ? `/sales-orders/products?warehouse_id=${warehouseId}`
+      : "/sales-orders/products",
+  SALES_REPS: "/sales-orders/sales-reps",
 } as const;
 
 const QUERY_KEYS = {
@@ -81,12 +110,136 @@ const STALE_TIME = {
 } as const;
 
 // ============================================================================
+// DROPDOWN DATA HOOKS (using fetch pattern like suppliers)
+// ============================================================================
+
+/**
+ * Get customers for sales order dropdown - using fetch pattern
+ */
+export function useGetCustomers() {
+  const { getAuthHeaders } = useAuthToken();
+
+  return useQuery({
+    queryKey: QUERY_KEYS.CUSTOMERS,
+    queryFn: async () => {
+      const url = `${API_BASE}/sales-orders/customers`;
+      console.log("🔍 Making API call to:", url);
+
+      const headers = await getAuthHeaders();
+      console.log("🔑 Using headers:", headers);
+
+      const response = await fetch(url, {
+        headers,
+      });
+
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response URL:", response.url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          errorText,
+        });
+        throw new Error(
+          `Failed to fetch customers: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("✅ API Success:", result);
+      return result.data || result;
+    },
+    staleTime: STALE_TIME.CUSTOMERS,
+  });
+}
+
+/**
+ * Get warehouses for sales order dropdown - using fetch pattern
+ */
+export function useGetWarehouses() {
+  const { getAuthHeaders } = useAuthToken();
+
+  return useQuery({
+    queryKey: QUERY_KEYS.WAREHOUSES,
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE}/sales-orders/warehouses`, {
+        headers: await getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch warehouses");
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    },
+    staleTime: STALE_TIME.WAREHOUSES,
+  });
+}
+
+/**
+ * Get products for sales order items - using fetch pattern
+ */
+export function useGetProducts(warehouseId?: number) {
+  const { getAuthHeaders } = useAuthToken();
+
+  return useQuery({
+    queryKey: QUERY_KEYS.PRODUCTS(warehouseId),
+    queryFn: async () => {
+      const url = warehouseId
+        ? `${API_BASE}/sales-orders/products?warehouse_id=${warehouseId}`
+        : `${API_BASE}/sales-orders/products`;
+
+      const response = await fetch(url, {
+        headers: await getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    },
+    staleTime: STALE_TIME.PRODUCTS,
+    enabled: true, // Always enabled, warehouseId is optional
+  });
+}
+
+/**
+ * Get sales representatives for assignment - using fetch pattern
+ */
+export function useGetSalesReps() {
+  const { getAuthHeaders } = useAuthToken();
+
+  return useQuery({
+    queryKey: QUERY_KEYS.SALES_REPS,
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE}/sales-orders/sales-reps`, {
+        headers: await getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch sales representatives");
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    },
+    staleTime: STALE_TIME.SALES_REPS,
+  });
+}
+
+// ============================================================================
 // MAIN HOOK IMPLEMENTATION
 // ============================================================================
 
 export const useSalesOrders = () => {
   const queryClient = useQueryClient();
-  const { getAuthHeaders } = useAuthToken();
+  const { getAuthHeaders, getAuthHeadersSync } = useAuthToken();
 
   // ============================================================================
   // QUERY HOOKS
@@ -118,7 +271,7 @@ export const useSalesOrders = () => {
           : SALES_ORDERS_ENDPOINTS.LIST;
 
         const { data } = await api.get(url, {
-          headers: getAuthHeaders(),
+          headers: getAuthHeadersSync(),
         });
         return data;
       },
@@ -135,7 +288,7 @@ export const useSalesOrders = () => {
       queryKey: QUERY_KEYS.SALES_ORDER(id),
       queryFn: async () => {
         const { data } = await api.get(SALES_ORDERS_ENDPOINTS.SHOW(id), {
-          headers: getAuthHeaders(),
+          headers: getAuthHeadersSync(),
         });
         return data;
       },
@@ -152,7 +305,7 @@ export const useSalesOrders = () => {
       queryKey: QUERY_KEYS.SALES_ORDERS_STATS,
       queryFn: async () => {
         const { data } = await api.get(SALES_ORDERS_ENDPOINTS.STATS, {
-          headers: getAuthHeaders(),
+          headers: getAuthHeadersSync(),
         });
         return data.data;
       },
@@ -160,73 +313,11 @@ export const useSalesOrders = () => {
     });
   };
 
-  /**
-   * Get customers for sales order dropdown
-   */
-  const useGetCustomers = () => {
-    return useQuery({
-      queryKey: QUERY_KEYS.CUSTOMERS,
-      queryFn: async () => {
-        const { data } = await api.get(SALES_ORDERS_ENDPOINTS.CUSTOMERS, {
-          headers: getAuthHeaders(),
-        });
-        return data.data;
-      },
-      staleTime: STALE_TIME.CUSTOMERS,
-    });
-  };
-
-  /**
-   * Get warehouses for sales order dropdown
-   */
-  const useGetWarehouses = () => {
-    return useQuery({
-      queryKey: QUERY_KEYS.WAREHOUSES,
-      queryFn: async () => {
-        const { data } = await api.get(SALES_ORDERS_ENDPOINTS.WAREHOUSES, {
-          headers: getAuthHeaders(),
-        });
-        return data.data;
-      },
-      staleTime: STALE_TIME.WAREHOUSES,
-    });
-  };
-
-  /**
-   * Get products for sales order items (optionally filtered by warehouse)
-   */
-  const useGetProducts = (warehouseId?: number) => {
-    return useQuery({
-      queryKey: QUERY_KEYS.PRODUCTS(warehouseId),
-      queryFn: async () => {
-        const { data } = await api.get(
-          SALES_ORDERS_ENDPOINTS.PRODUCTS(warehouseId),
-          {
-            headers: getAuthHeaders(),
-          }
-        );
-        return data.data;
-      },
-      staleTime: STALE_TIME.PRODUCTS,
-      enabled: true, // Always enabled, warehouseId is optional
-    });
-  };
-
-  /**
-   * Get sales representatives for assignment
-   */
-  const useGetSalesReps = () => {
-    return useQuery({
-      queryKey: QUERY_KEYS.SALES_REPS,
-      queryFn: async () => {
-        const { data } = await api.get(SALES_ORDERS_ENDPOINTS.SALES_REPS, {
-          headers: getAuthHeaders(),
-        });
-        return data.data;
-      },
-      staleTime: STALE_TIME.SALES_REPS,
-    });
-  };
+  // Export the individual hooks for external use
+  const useGetCustomersHook = useGetCustomers;
+  const useGetWarehousesHook = useGetWarehouses;
+  const useGetProductsHook = useGetProducts;
+  const useGetSalesRepsHook = useGetSalesReps;
 
   // ============================================================================
   // MUTATION HOOKS
@@ -450,10 +541,10 @@ export const useSalesOrders = () => {
     useGetSalesOrders,
     useGetSalesOrder,
     useGetSalesOrderStats,
-    useGetCustomers,
-    useGetWarehouses,
-    useGetProducts,
-    useGetSalesReps,
+    useGetCustomersHook,
+    useGetWarehousesHook,
+    useGetProductsHook,
+    useGetSalesRepsHook,
 
     // Mutation hooks
     useCreateSalesOrder,

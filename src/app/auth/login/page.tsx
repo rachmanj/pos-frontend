@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { useToast } from "@/components/ui/toast"
+import { toast } from "sonner"
 
 import { loginSchema, type LoginFormData } from "@/lib/validations"
 import { ExtendedSession } from "@/types/auth"
@@ -22,7 +22,7 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [showPassword, setShowPassword] = useState(false)
     const router = useRouter()
-    const { showToast } = useToast()
+    // Toast functionality now handled by Sonner
 
     const form = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
@@ -44,7 +44,7 @@ export default function LoginPage() {
 
         try {
             console.log("📞 Calling signIn with credentials provider...")
-            showToast("Signing in...", "info", 2000)
+            toast.info("Signing in...")
 
             const result = await signIn("credentials", {
                 email: data.email,
@@ -57,10 +57,10 @@ export default function LoginPage() {
             if (result?.error) {
                 console.error("❌ SignIn error:", result.error)
                 setError("Invalid email or password")
-                showToast("Invalid email or password", "error")
+                toast.error("Invalid email or password")
             } else {
                 console.log("✅ SignIn successful, getting session...")
-                showToast("Login successful! Redirecting...", "success", 2000)
+                toast.success("Login successful! Redirecting...")
 
                 // Get the session to check user role and redirect accordingly
                 const session = await getSession()
@@ -78,7 +78,7 @@ export default function LoginPage() {
         } catch (error) {
             console.error("💥 Exception during login:", error)
             setError("An error occurred. Please try again.")
-            showToast("An error occurred. Please try again.", "error")
+            toast.error("An error occurred. Please try again.")
         } finally {
             setIsLoading(false)
         }

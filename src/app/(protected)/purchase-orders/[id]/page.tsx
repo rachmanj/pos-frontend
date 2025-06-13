@@ -110,8 +110,41 @@ export default function PurchaseOrderDetailPage() {
         }
     };
 
-    const handleDownloadPDF = () => {
-        toast.success("PDF download will be implemented soon");
+    const handleDownloadPDF = async () => {
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/purchase-orders/${po.id}/download-pdf`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Accept': 'application/pdf',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to download PDF');
+            }
+
+            // Create blob from response
+            const blob = await response.blob();
+
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `PO-${po.po_number}.pdf`;
+
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success("PDF downloaded successfully");
+        } catch (error: any) {
+            toast.error("Failed to download PDF");
+        }
     };
 
     const canApprove = po.status === "pending_approval";

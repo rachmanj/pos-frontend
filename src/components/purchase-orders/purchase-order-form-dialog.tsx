@@ -34,11 +34,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSuppliers } from "@/hooks/use-suppliers";
 import { useCreatePurchaseOrder, useUpdatePurchaseOrder } from "@/hooks/use-purchase-orders";
 import { useProducts } from "@/hooks/useInventory";
 import { formatCurrency } from "@/lib/utils";
+import { getEffectiveTaxRate, calculateLineItemTotals, COMMON_TAX_RATES, formatTaxRate } from "@/lib/tax-config";
+import { TaxRateSelector } from "@/components/ui/tax-rate-selector";
 import type { PurchaseOrder, CreatePurchaseOrderData } from "@/types/purchasing";
 
 const purchaseOrderSchema = z.object({
@@ -46,6 +48,7 @@ const purchaseOrderSchema = z.object({
     order_date: z.string().min(1, "Order date is required"),
     expected_delivery_date: z.string().optional(),
     notes: z.string().optional(),
+    tax_rate_override: z.number().min(0).max(100).optional(),
     items: z.array(z.object({
         product_id: z.number().min(1, "Product is required"),
         unit_id: z.number().min(1, "Unit is required"),
@@ -81,6 +84,7 @@ export function PurchaseOrderFormDialog({
             order_date: new Date().toISOString().split('T')[0],
             expected_delivery_date: "",
             notes: "",
+            tax_rate_override: undefined,
             items: [{ product_id: 0, unit_id: 0, quantity_ordered: 1, unit_price: 0 }],
         },
     });
@@ -113,6 +117,7 @@ export function PurchaseOrderFormDialog({
                 order_date: purchaseOrder.order_date,
                 expected_delivery_date: purchaseOrder.expected_delivery_date || "",
                 notes: purchaseOrder.notes || "",
+                tax_rate_override: purchaseOrder.tax_rate_override,
                 items: purchaseOrder.items.map(item => ({
                     product_id: item.product_id,
                     unit_id: item.unit_id,
@@ -124,18 +129,32 @@ export function PurchaseOrderFormDialog({
     }, [mode, purchaseOrder, form]);
 
     const watchedItems = form.watch("items");
+    const watchedTaxRateOverride = form.watch("tax_rate_override");
 
     const calculateTotals = () => {
         const subtotal = watchedItems.reduce((sum, item) => {
             return sum + (item.quantity_ordered * item.unit_price);
         }, 0);
-        const taxAmount = subtotal * 0.1; // Assuming 10% tax
+
+        // Calculate tax using override rate or product-specific tax rates or system default (11%)
+        const taxAmount = watchedItems.reduce((sum, item) => {
+            const product = getProductById(item.product_id);
+            const effectiveTaxRate = watchedTaxRateOverride ?? getEffectiveTaxRate(product);
+            const itemSubtotal = item.quantity_ordered * item.unit_price;
+            return sum + (itemSubtotal * effectiveTaxRate / 100);
+        }, 0);
+
         const total = subtotal + taxAmount;
 
-        return { subtotal, taxAmount, total };
+        return {
+            subtotal,
+            taxAmount,
+            total,
+            effectiveTaxRate: watchedTaxRateOverride ?? getEffectiveTaxRate()
+        };
     };
 
-    const { subtotal, taxAmount, total } = calculateTotals();
+    const { subtotal, taxAmount, total, effectiveTaxRate } = calculateTotals();
 
     const onSubmit = async (data: PurchaseOrderFormData) => {
         try {
@@ -144,6 +163,7 @@ export function PurchaseOrderFormDialog({
                 order_date: data.order_date,
                 expected_delivery_date: data.expected_delivery_date || undefined,
                 notes: data.notes || undefined,
+                tax_rate_override: data.tax_rate_override,
                 items: data.items,
             };
 
@@ -152,26 +172,16 @@ export function PurchaseOrderFormDialog({
                     id: purchaseOrder.id,
                     data: submitData,
                 });
-                toast({
-                    title: "Success",
-                    description: "Purchase order updated successfully",
-                });
+                toast.success("Purchase order updated successfully");
             } else {
                 await createPurchaseOrder.mutateAsync(submitData);
-                toast({
-                    title: "Success",
-                    description: "Purchase order created successfully",
-                });
+                toast.success("Purchase order created successfully");
             }
 
             onSuccess();
             form.reset();
         } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || `Failed to ${mode} purchase order`,
-                variant: "destructive",
-            });
+            toast.error(error.message || `Failed to ${mode} purchase order`);
         }
     };
 
@@ -287,6 +297,26 @@ export function PurchaseOrderFormDialog({
                                                 rows={3}
                                             />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="tax_rate_override"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <TaxRateSelector
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            label="Tax Rate Override"
+                                            description="Override the default tax rate for this purchase order. Leave empty to use product-specific or system default rates."
+                                            placeholder="Use default tax rates"
+                                            showCustomInput={true}
+                                            showPreview={true}
+                                            previewAmount={subtotal}
+                                        />
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -480,7 +510,12 @@ export function PurchaseOrderFormDialog({
                                         <span className="font-medium">{formatCurrency(subtotal)}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Tax (10%):</span>
+                                        <span>
+                                            Tax ({formatTaxRate(effectiveTaxRate)}
+                                            {watchedTaxRateOverride !== undefined && (
+                                                <Badge variant="secondary" className="ml-2 text-xs">OVERRIDE</Badge>
+                                            )}):
+                                        </span>
                                         <span className="font-medium">{formatCurrency(taxAmount)}</span>
                                     </div>
                                     <div className="flex justify-between text-lg font-bold border-t pt-2">

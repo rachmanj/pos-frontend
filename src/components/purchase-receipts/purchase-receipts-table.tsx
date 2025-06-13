@@ -159,7 +159,11 @@ export function PurchaseReceiptsTable({
                             </TableRow>
                         ) : (
                             receipts.map((receipt) => (
-                                <TableRow key={receipt.id}>
+                                <TableRow
+                                    key={receipt.id}
+                                    className="cursor-pointer hover:bg-muted/50"
+                                    onClick={() => handleViewDetails(receipt)}
+                                >
                                     <TableCell className="font-medium">
                                         {receipt.receipt_number}
                                     </TableCell>
@@ -198,7 +202,11 @@ export function PurchaseReceiptsTable({
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>

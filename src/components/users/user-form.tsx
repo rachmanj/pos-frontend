@@ -36,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
 import { directUserApi, directRoleApi, setStoredToken } from '@/lib/user-api';
 import { User, Role, CreateUserData, UpdateUserData } from '@/types/auth';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 
 const userFormSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -61,7 +61,7 @@ interface UserFormProps {
 export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps) {
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(false);
-    const { showToast } = useToast();
+    // Toast functionality now handled by Sonner
     const { data: session, status } = useSession();
     const isEditing = !!user;
 
@@ -132,13 +132,13 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
             console.log("✅ Roles fetched successfully:", response.roles.length);
         } catch (error: unknown) {
             console.error('❌ Failed to fetch roles:', error);
-            showToast('Failed to fetch roles', 'error');
+            toast.error('Failed to fetch roles');
         }
     };
 
     const onSubmit = async (data: UserFormData) => {
         if (status !== 'authenticated' || !session || !('accessToken' in session) || !session.accessToken) {
-            showToast('You must be logged in to perform this action', 'error');
+            toast.error('You must be logged in to perform this action');
             return;
         }
 
@@ -201,7 +201,7 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
                     }
                 }
 
-                showToast('User updated successfully', 'success', 3000);
+                toast.success('User updated successfully');
             } else {
                 // Create new user
                 const createData: CreateUserData = {
@@ -227,7 +227,7 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
                     }
                 }
 
-                showToast('User created successfully', 'success', 3000);
+                toast.success('User created successfully');
             }
 
             onSuccess();
@@ -249,7 +249,7 @@ export function UserForm({ open, onOpenChange, user, onSuccess }: UserFormProps)
                     message: 'This employee ID is already in use'
                 });
             } else {
-                showToast(errorMessage, 'error');
+                toast.error(errorMessage);
             }
         } finally {
             setLoading(false);

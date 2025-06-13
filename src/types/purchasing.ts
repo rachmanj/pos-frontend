@@ -38,6 +38,7 @@ export interface PurchaseOrder {
   subtotal: number;
   tax_amount: number;
   total_amount: number;
+  tax_rate_override?: number;
   notes?: string;
   created_by: number;
   approved_by?: number;
@@ -163,6 +164,7 @@ export interface CreatePurchaseOrderData {
   order_date: string;
   expected_delivery_date?: string;
   notes?: string;
+  tax_rate_override?: number;
   items: {
     product_id: number;
     unit_id: number;

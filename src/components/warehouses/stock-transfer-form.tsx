@@ -15,7 +15,8 @@ import { Separator } from "@/components/ui/separator"
 import { Plus, Trash2, Search, Package } from "lucide-react"
 import { useWarehouses } from "@/hooks/use-warehouses"
 import { useProducts } from "@/hooks/useInventory"
-import { Warehouse, Product } from "@/types/inventory"
+import { Product } from "@/types/inventory"
+import { Warehouse } from "@/types/warehouse"
 
 const stockTransferSchema = z.object({
     from_warehouse_id: z.string().min(1, "Source warehouse is required"),
@@ -32,7 +33,7 @@ const stockTransferSchema = z.object({
 type StockTransferFormData = z.infer<typeof stockTransferSchema>
 
 interface StockTransferFormProps {
-    onSubmit: (data: StockTransferFormData) => Promise<void>
+    onSubmit: (data: any) => Promise<void>
     onCancel: () => void
     initialData?: Partial<StockTransferFormData>
     isLoading?: boolean
@@ -46,6 +47,16 @@ export function StockTransferForm({
 }: StockTransferFormProps) {
     const [searchTerm, setSearchTerm] = useState("")
     const [showProductSearch, setShowProductSearch] = useState<number | null>(null)
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
+
+    // Debounce search term
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm)
+        }, 300)
+
+        return () => clearTimeout(timer)
+    }, [searchTerm])
 
     const form = useForm<StockTransferFormData>({
         resolver: zodResolver(stockTransferSchema),
@@ -65,7 +76,10 @@ export function StockTransferForm({
     })
 
     const { data: warehousesData } = useWarehouses()
-    const { data: productsData } = useProducts({ search: searchTerm })
+    const { data: productsData } = useProducts({
+        search: debouncedSearchTerm,
+        per_page: 50 // Increase limit for better search results
+    })
 
     const warehouses = warehousesData?.data || []
     const products = productsData?.data || []
@@ -77,6 +91,17 @@ export function StockTransferForm({
     const availableDestinationWarehouses = warehouses.filter(
         (warehouse: Warehouse) => warehouse.id.toString() !== fromWarehouseId
     )
+
+    // Filter products by search term for better results
+    const filteredProducts = products.filter((product: Product) => {
+        if (!searchTerm) return true
+        const searchLower = searchTerm.toLowerCase()
+        return (
+            product.name.toLowerCase().includes(searchLower) ||
+            product.sku.toLowerCase().includes(searchLower) ||
+            (product.barcode && product.barcode.toLowerCase().includes(searchLower))
+        )
+    })
 
     const handleSubmit = async (data: StockTransferFormData) => {
         const formattedData = {
@@ -104,6 +129,7 @@ export function StockTransferForm({
     const selectProduct = (index: number, product: Product) => {
         form.setValue(`items.${index}.product_id`, product.id.toString())
         setShowProductSearch(null)
+        setSearchTerm("") // Clear search after selection
     }
 
     const getSelectedProduct = (productId: string): Product | undefined => {
@@ -273,7 +299,7 @@ export function StockTransferForm({
                                                                                 className="mb-2"
                                                                             />
                                                                             <div className="space-y-1">
-                                                                                {products.map((product: Product) => (
+                                                                                {filteredProducts.map((product: Product) => (
                                                                                     <div
                                                                                         key={product.id}
                                                                                         className="p-2 hover:bg-gray-100 cursor-pointer rounded"
